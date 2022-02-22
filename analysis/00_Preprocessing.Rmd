@@ -1,0 +1,198 @@
+---
+title: "Preprocessing"
+author: "AGC"
+date: "22 2 2022"
+output: html_document
+---
+
+```{r analysis parameters, include=T}
+
+threshold = 0.05
+model = "~1+Group+Timepoint+Group*Timepoint"
+
+```
+
+
+
+```{r setup, include=FALSE}
+home = getwd()
+
+output=paste0(home,"/output/")
+data=paste0(home, "/data/")
+
+source(paste0(home,"/code/custom_functions.R"))
+
+```
+
+```{r load libraries, include=FALSE}
+library(DESeq2)
+library(tidyverse)
+library(compareGroups)
+library(limma)
+library(lme4)
+library(lm.beta)
+library(viridis)
+library(ggplot2)
+```
+
+```{r load data, include=FALSE}
+counts=read.csv(paste0(data,"miRNAsRPMTable.csv"))
+counts <- counts %>% column_to_rownames("customerID")
+samplemeta <- read.csv(paste0(data,"SampleSheet.csv"))
+samplemeta$customerID=paste0("X", samplemeta$customerID)
+samplemeta <- samplemeta %>% column_to_rownames("customerID")
+samplemeta$Group <- relevel(as.factor(samplemeta$Group), ref="Control")
+samplemeta$Timepoint <- factor(samplemeta$Timepoint, ordered=T, 
+                               levels=c("Baseline","d1","d7",
+                                        "d14","End","postseizure"))
+
+model = "~1+Group+Timepoint+Group*Timepoint"
+table(samplemeta$Group,samplemeta$Timepoint)
+
+drop_postseizure_idx <- samplemeta$Timepoint!="postseizure"
+samplemeta <- samplemeta[drop_postseizure_idx, ]
+samplemeta$Timepoint = droplevels(samplemeta$Timepoint)
+counts <- counts[,rownames(samplemeta)]
+
+```
+
+
+```{r basic QC, fig.height=15, fig.width=15, echo=F}
+log2_cpm = log2(counts+1)
+
+varsset=apply(log2_cpm, 1, var)
+
+limit=428
+cpm.sel.trans = t(log2_cpm[order(varsset,decreasing = T)[1:limit],])
+
+distance = dist(cpm.sel.trans)
+
+sampleDistMatrix <- as.matrix(distance)
+
+#colors for plotting heatmap
+colors=viridis(255)
+
+groupcol = Dark8[1:nlevels(samplemeta$Group)]
+names(groupcol) = levels(samplemeta$Group)
+
+timepointcol = colorRampPalette(c("lightblue", "dodgerblue4"))(nlevels(samplemeta$Timepoint))[c(1:nlevels(samplemeta$Timepoint))]
+names(timepointcol) = levels(samplemeta$Timepoint)
+
+ann_colors = list(
+  Group = groupcol, 
+  Timepoint = timepointcol
+)
+
+labels = samplemeta[,c("Group","Timepoint")] %>%  
+  mutate_all(as.character) %>% as.data.frame()
+
+rownames(labels)=rownames(samplemeta)
+
+pheatmap(sampleDistMatrix,
+         clustering_distance_rows = distance,
+         clustering_distance_cols = distance,
+         clustering_method = "ward.D2",
+         scale ="none",
+         show_rownames=F, show_colnames = F,
+         legend=T,
+         border_color = NA, 
+         annotation_row = labels,
+         annotation_col = labels,
+         annotation_colors = ann_colors,
+         col = colors, 
+         main = "D62 Distances normalized log2 counts")
+
+```
+
+
+## Statistical Modelling over time 
+
+Time points where modeled as interaction term with Group status to identify which miRNAs where differential regulated over time in dependence of Group status. 
+
+Time was modeled as polynomial function of the fourth degree to capture linear, quadratic, cubic and ^4 effects. 
+
+
+
+
+```{r modelling, include=T, echo =F}
+designform = as.formula(model)
+design = model.matrix( designform, samplemeta)
+fitDupCor <- lmFit(log2_cpm, design)
+fit<- eBayes(fitDupCor)
+
+lin <-  topTable(fit,n=dim(fit)[1], coef="GroupEpilepsy:Timepoint.L")
+colnames(lin) = paste0("T^1xGroup_",colnames(lin))
+squ  <- topTable(fit,n=dim(fit)[1], coef="GroupEpilepsy:Timepoint.Q")
+colnames(squ) = paste0("T^2xGroup_",colnames(squ))
+cub <- topTable(fit,n=dim(fit)[1], coef="GroupEpilepsy:Timepoint.C")
+colnames(cub) = paste0("T^3xGroup_",colnames(cub))
+qua <- topTable(fit,n=dim(fit)[1], coef="GroupEpilepsy:Timepoint^4")
+colnames(qua) = paste0("T^4xGroup_",colnames(qua))
+
+results = cbind(lin,
+                squ[rownames(lin),],
+                cub[rownames(lin),],
+                qua[rownames(lin),])
+
+
+
+adjsig = rowSums(results[,grepl("adj",colnames(results))]<threshold)>0
+sig_adjusted=sum(rowSums(results[,grepl("adj",colnames(results))]<threshold)>0)
+
+nomsig=rowSums(results[,grepl("P.Value",colnames(results))]<threshold)>0
+sig_nom=sum(nomsig)
+```
+
+### Significant hits
+
+In total `r sig_adjusted` miRNAs where siginificant after correction for multiple testing and a total of `r sig_nom` mir RNAs where significnat at an uncorrected p-value threshold of `r threshold`
+
+### Nominal significnt hits 
+
+```{r show modelling, include=T, echo =F}
+display_tab(results[nomsig,grepl("P.Value",colnames(results))])
+
+```
+
+### unsorted heatmap of significnt hits 
+
+```{r visualize, fig.height=15, fig.width=15, include=T, echo=F}
+cpm.sel.trans<-t(log2_cpm[nomsig, order(samplemeta$Group, samplemeta$Timepoint)])
+distance = dist(cpm.sel.trans)
+sampleDistMatrix <- as.matrix(distance)
+
+pheatmap(sampleDistMatrix,
+         cluster_rows=F, 
+         cluster_cols = F,
+         scale ="none",
+         show_rownames=F, show_colnames = F,
+         legend=T,
+         border_color = NA, 
+         annotation_row = labels,
+         annotation_col = labels,
+         annotation_colors = ann_colors,
+         col = colors, 
+         main = "D62 Distances normalized log2 counts")
+
+```
+
+### time line plots of significnt hits 
+
+```{r line-plots, fig.height=24, fig.width=8, include=T, echo=F}
+
+plotdata <- cbind(samplemeta, t(log2_cpm[nomsig,]) )
+
+
+plotdata <- plotdata %>% reshape2::melt(., direction = "long",
+                            value.name = "counts",
+                            variable.name="gene",
+                            measure.vars = rownames(log2_cpm)[which(nomsig)])
+
+p<-ggplot(plotdata, aes(x=Timepoint, y=counts, group=Group, col=Group)) +
+  geom_smooth()+geom_jitter(width=0.05)+facet_wrap(vars(gene), ncol=4)+ 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+p
+
+```
+

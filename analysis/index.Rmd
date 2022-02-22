@@ -8,4 +8,11 @@ editor_options:
   chunk_output_type: console
 ---
 
-Welcome to my research website.
+
+# Here you find all analyses, results and visualizations
+
+
+## * [Go to initial analysis](00_Preprocessing.html)
+
+<!-- ## * Statistical analysis [view](01_Biostat.html) -->
+

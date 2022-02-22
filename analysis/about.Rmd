@@ -7,4 +7,13 @@ editor_options:
   chunk_output_type: console
 ---
 
-Describe your project.
+Principal investigator(s)
+
+[Felix Rosenow and Kai Siebenbrotd](https://www.kgu.de/einrichtungen/kliniken/zentrum-der-neurologie-und-neurochirurgie/epilepsiezentrum-frankfurt-rhein-main/forschung)
+
+Analysis done by Andreas Chiocchetti
+startet 22.02.2022
+
+Related Publication are published here 
+
+Currently no publication available

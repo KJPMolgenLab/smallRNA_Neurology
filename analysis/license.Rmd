@@ -7,15 +7,24 @@ editor_options:
   chunk_output_type: console
 ---
 
-What license are you using for your code? See [choosealicense.com][choose] for
-help deciding. It's a convention to save a file `LICENSE` in the root of your
-Git repo that contains the license text.
+All code is published under **CC licence BY 4.0**
 
-What license are you using for the written content on your site? It is
-traditional to choose a [Creative Commons][cc] license for this type of content.
 
-[choose]: https://choosealicense.com/
-[cc]: https://creativecommons.org/choose/
+**You are free to:**
+**Share** — copy and redistribute the material in any medium or format
+**Adapt** — remix, transform, and build upon the material for any purpose, even commercially.
 
-How should others cite your work? It's a convention to save a file `CITATION`
-in the root of your Git repo that contains the citation information.
+This license is acceptable for Free Cultural Works.
+The licensor cannot revoke these freedoms as long as you follow the license terms.
+
+**Under the following terms:**
+Attribution — You must give appropriate credit, provide a link to the license, and indicate if changes were made. 
+You may do so in any reasonable manner, but not in any way that suggests the licensor endorses you or your use.
+
+Please cite any paper listed in the [About Section](about.html)
+
+No additional restrictions — You may not apply legal terms or technological measures that legally restrict others from doing anything the license permits.
+
+
+https://creativecommons.org/licenses/by/4.0/legalcode
+
